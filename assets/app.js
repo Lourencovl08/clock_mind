@@ -1,193 +1,572 @@
 (() => {
   const config = window.APP_CONFIG || {};
-  const hasBackend = Boolean(config.SUPABASE_URL && config.SUPABASE_ANON_KEY);
 
-  const $ = (s, root = document) => root.querySelector(s);
-  const $$ = (s, root = document) => [...root.querySelectorAll(s)];
+  const hasBackend = Boolean(
+    config.SUPABASE_URL && config.SUPABASE_ANON_KEY
+  );
 
-  // Mobile menu
-  $(".menu-toggle")?.addEventListener("click", () => $(".nav").classList.toggle("open"));
-  $$(".nav a").forEach(a => a.addEventListener("click", () => $(".nav").classList.remove("open")));
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => [
+    ...root.querySelectorAll(selector)
+  ];
 
-  // Auth tabs
-  $$(".auth-tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      $$(".auth-tab").forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-      const mode = tab.dataset.auth;
-      $("#login-form").classList.toggle("hidden", mode !== "login");
-      $("#register-form").classList.toggle("hidden", mode !== "register");
+  // =========================
+  // MOBILE MENU
+  // =========================
+
+  $(".menu-toggle")?.addEventListener("click", () => {
+    $(".nav")?.classList.toggle("open");
+  });
+
+  $$(".nav a").forEach((link) => {
+    link.addEventListener("click", () => {
+      $(".nav")?.classList.remove("open");
     });
   });
 
-  let sessionToken = localStorage.getItem("atlas_session") || "";
+  // =========================
+  // AUTH TABS
+  // =========================
+
+  $$(".auth-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      $$(".auth-tab").forEach((item) => {
+        item.classList.remove("active");
+      });
+
+      tab.classList.add("active");
+
+      const mode = tab.dataset.auth;
+
+      $("#login-form")?.classList.toggle(
+        "hidden",
+        mode !== "login"
+      );
+
+      $("#register-form")?.classList.toggle(
+        "hidden",
+        mode !== "register"
+      );
+    });
+  });
+
+  // =========================
+  // SESSION
+  // =========================
+
+  let sessionToken =
+    localStorage.getItem("atlas_session") || "";
+
   let currentUser = null;
 
+  // =========================
+  // SUPABASE RPC
+  // =========================
+
   async function rpc(fn, body) {
-    if (!hasBackend) throw new Error("BACKEND_NOT_CONFIGURED");
-    const response = await fetch(`${config.SUPABASE_URL}/rest/v1/rpc/${fn}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": config.SUPABASE_ANON_KEY,
-        "Authorization": `Bearer ${config.SUPABASE_ANON_KEY}`
-      },
-      body: JSON.stringify(body || {})
-    });
-    const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(data?.message || data?.error || "Erro na comunicação com o servidor.");
+    if (!hasBackend) {
+      throw new Error("BACKEND_NOT_CONFIGURED");
+    }
+
+    const response = await fetch(
+      `${config.SUPABASE_URL}/rest/v1/rpc/${fn}`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": config.SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${config.SUPABASE_ANON_KEY}`
+        },
+
+        body: JSON.stringify(body || {})
+      }
+    );
+
+    const data = await response
+      .json()
+      .catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message ||
+        data?.error ||
+        "Erro na comunicação com o servidor."
+      );
+    }
+
     return data;
   }
 
+  // =========================
+  // MESSAGES
+  // =========================
+
   function message(id, text, ok = false) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = text || "";
-    el.style.color = ok ? "#355f4e" : "";
+    const element = document.getElementById(id);
+
+    if (!element) {
+      return;
+    }
+
+    element.textContent = text || "";
+    element.style.color = ok ? "#355f4e" : "";
   }
 
   function backendHint(id) {
-    if (!hasBackend) message(id, "Cadastro ainda não configurado. Veja README.md e supabase/schema.sql.");
+    if (!hasBackend) {
+      message(
+        id,
+        "Cadastro ainda não configurado. Veja README.md e supabase/schema.sql."
+      );
+    }
   }
 
-  $("#register-form")?.addEventListener("submit", async e => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    message("register-message", "Criando cadastro...");
-    try {
-      const data = await rpc("register_user", {
-        p_first_name: fd.get("first_name").trim(),
-        p_last_name: fd.get("last_name").trim(),
-        p_password: fd.get("password")
-      });
-      sessionToken = data.session_token;
-      currentUser = data.user;
-      localStorage.setItem("atlas_session", sessionToken);
-      message("register-message", "Cadastro criado.", true);
-      showCollection();
-      await loadWatches();
-    } catch (err) {
-      if (err.message === "BACKEND_NOT_CONFIGURED") backendHint("register-message");
-      else message("register-message", err.message);
-    }
-  });
+  // =========================
+  // REGISTER
+  // =========================
 
-  $("#login-form")?.addEventListener("submit", async e => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    message("login-message", "Entrando...");
-    try {
-      const data = await rpc("login_user", {
-        p_first_name: fd.get("first_name").trim(),
-        p_password: fd.get("password")
-      });
-      sessionToken = data.session_token;
-      currentUser = data.user;
-      localStorage.setItem("atlas_session", sessionToken);
-      message("login-message", "Login realizado.", true);
-      showCollection();
-      await loadWatches();
-    } catch (err) {
-      if (err.message === "BACKEND_NOT_CONFIGURED") backendHint("login-message");
-      else message("login-message", "Nome ou senha inválidos.");
-    }
-  });
+  $("#register-form")?.addEventListener(
+    "submit",
+    async (event) => {
+      event.preventDefault();
 
-  $("#logout")?.addEventListener("click", () => {
-    sessionToken = "";
-    currentUser = null;
-    localStorage.removeItem("atlas_session");
-    $("#collection-app").classList.add("hidden");
-    $("#auth-card").classList.remove("hidden");
-  });
+      const form = event.currentTarget;
+      const formData = new FormData(form);
+
+      message(
+        "register-message",
+        "Criando cadastro..."
+      );
+
+      try {
+        const data = await rpc("register_user", {
+          p_first_name: formData
+            .get("first_name")
+            .trim(),
+
+          p_last_name: formData
+            .get("last_name")
+            .trim(),
+
+          p_password: formData.get("password")
+        });
+
+        sessionToken = data.session_token;
+        currentUser = data.user;
+
+        localStorage.setItem(
+          "atlas_session",
+          sessionToken
+        );
+
+        message(
+          "register-message",
+          "Cadastro criado.",
+          true
+        );
+
+        showCollection();
+
+        await loadWatches();
+
+      } catch (error) {
+        if (
+          error.message ===
+          "BACKEND_NOT_CONFIGURED"
+        ) {
+          backendHint("register-message");
+        } else {
+          message(
+            "register-message",
+            error.message
+          );
+        }
+      }
+    }
+  );
+
+  // =========================
+  // LOGIN
+  // =========================
+
+  $("#login-form")?.addEventListener(
+    "submit",
+    async (event) => {
+      event.preventDefault();
+
+      const form = event.currentTarget;
+      const formData = new FormData(form);
+
+      message(
+        "login-message",
+        "Entrando..."
+      );
+
+      try {
+        const data = await rpc("login_user", {
+          p_first_name: formData
+            .get("first_name")
+            .trim(),
+
+          p_password: formData.get("password")
+        });
+
+        sessionToken = data.session_token;
+        currentUser = data.user;
+
+        localStorage.setItem(
+          "atlas_session",
+          sessionToken
+        );
+
+        message(
+          "login-message",
+          "Login realizado.",
+          true
+        );
+
+        showCollection();
+
+        await loadWatches();
+
+      } catch (error) {
+        if (
+          error.message ===
+          "BACKEND_NOT_CONFIGURED"
+        ) {
+          backendHint("login-message");
+        } else {
+          message(
+            "login-message",
+            "Nome ou senha inválidos."
+          );
+        }
+      }
+    }
+  );
+
+  // =========================
+  // LOGOUT
+  // =========================
+
+  $("#logout")?.addEventListener(
+    "click",
+    () => {
+      sessionToken = "";
+      currentUser = null;
+
+      localStorage.removeItem(
+        "atlas_session"
+      );
+
+      $("#collection-app")?.classList.add(
+        "hidden"
+      );
+
+      $("#auth-card")?.classList.remove(
+        "hidden"
+      );
+    }
+  );
+
+  // =========================
+  // SHOW COLLECTION
+  // =========================
 
   function showCollection() {
-    $("#auth-card").classList.add("hidden");
-    $("#collection-app").classList.remove("hidden");
-    $("#user-name").textContent = `${currentUser.first_name}${currentUser.last_name ? " " + currentUser.last_name : ""}`;
+    $("#auth-card")?.classList.add("hidden");
+
+    $("#collection-app")?.classList.remove(
+      "hidden"
+    );
+
+    if (currentUser) {
+      $("#user-name").textContent =
+        `${currentUser.first_name}${
+          currentUser.last_name
+            ? " " + currentUser.last_name
+            : ""
+        }`;
+    }
   }
 
+  // =========================
+  // LOAD SESSION
+  // =========================
+
   async function loadSession() {
-    if (!sessionToken || !hasBackend) return;
+    if (!sessionToken || !hasBackend) {
+      return;
+    }
+
     try {
-      const data = await rpc("session_user", { p_session_token: sessionToken });
+      const data = await rpc(
+        "session_user",
+        {
+          p_session_token: sessionToken
+        }
+      );
+
       if (data?.user) {
         currentUser = data.user;
+
         showCollection();
+
         await loadWatches();
+
       } else {
-        localStorage.removeItem("atlas_session");
+        localStorage.removeItem(
+          "atlas_session"
+        );
+
         sessionToken = "";
       }
-    } catch (_) {
-      localStorage.removeItem("atlas_session");
+
+    } catch (error) {
+      localStorage.removeItem(
+        "atlas_session"
+      );
+
       sessionToken = "";
     }
   }
 
+  // =========================
+  // LOAD WATCHES
+  // =========================
+
   async function loadWatches() {
     try {
-      const watches = await rpc("list_watches", { p_session_token: sessionToken });
+      const watches = await rpc(
+        "list_watches",
+        {
+          p_session_token: sessionToken
+        }
+      );
+
       renderWatches(watches || []);
-    } catch (err) {
+
+    } catch (error) {
       renderWatches([]);
-      message("watch-message", err.message);
+
+      message(
+        "watch-message",
+        error.message
+      );
     }
   }
+
+  // =========================
+  // RENDER WATCHES
+  // =========================
 
   function renderWatches(watches) {
     const grid = $("#watch-grid");
-    if (!watches.length) {
-      grid.innerHTML = `<div class="empty-state">Sua coleção ainda está vazia. Adicione o primeiro relógio acima.</div>`;
+
+    if (!grid) {
       return;
     }
-    grid.innerHTML = watches.map(w => `
-      <article class="watch-tile">
-        <span class="watch-category">${escapeHtml(w.category || "Outro")}</span>
-        <h4>${escapeHtml(w.brand)} ${escapeHtml(w.model)}</h4>
-        <p>${w.year ? escapeHtml(String(w.year)) : "Ano não informado"}</p>
-        ${w.notes ? `<p>${escapeHtml(w.notes)}</p>` : ""}
-        <button data-delete="${w.id}">Remover</button>
-      </article>
-    `).join("");
 
-    $$("[data-delete]", grid).forEach(btn => btn.addEventListener("click", async () => {
-      if (!confirm("Remover este relógio da coleção?")) return;
-      try {
-        await rpc("delete_watch", { p_session_token: sessionToken, p_watch_id: btn.dataset.delete });
-        await loadWatches();
-      } catch (err) {
-        message("watch-message", err.message);
+    if (!watches.length) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          Sua coleção ainda está vazia.
+          Adicione o primeiro relógio acima.
+        </div>
+      `;
+
+      return;
+    }
+
+    grid.innerHTML = watches
+      .map(
+        (watch) => `
+          <article class="watch-tile">
+
+            <span class="watch-category">
+              ${escapeHtml(
+                watch.category || "Outro"
+              )}
+            </span>
+
+            <h4>
+              ${escapeHtml(
+                watch.brand || ""
+              )}
+              ${escapeHtml(
+                watch.model || ""
+              )}
+            </h4>
+
+            <p>
+              ${
+                watch.year
+                  ? escapeHtml(
+                      String(watch.year)
+                    )
+                  : "Ano não informado"
+              }
+            </p>
+
+            ${
+              watch.notes
+                ? `
+                  <div class="watch-notes">
+                    ${escapeHtml(
+                      watch.notes
+                    )}
+                  </div>
+                `
+                : ""
+            }
+
+            <button
+              type="button"
+              data-delete="${escapeHtml(
+                String(watch.id)
+              )}"
+            >
+              Remover
+            </button>
+
+          </article>
+        `
+      )
+      .join("");
+
+    $$("[data-delete]", grid).forEach(
+      (button) => {
+        button.addEventListener(
+          "click",
+          async () => {
+            if (
+              !confirm(
+                "Remover este relógio da coleção?"
+              )
+            ) {
+              return;
+            }
+
+            try {
+              await rpc(
+                "delete_watch",
+                {
+                  p_session_token:
+                    sessionToken,
+
+                  p_watch_id:
+                    button.dataset.delete
+                }
+              );
+
+              await loadWatches();
+
+            } catch (error) {
+              message(
+                "watch-message",
+                error.message
+              );
+            }
+          }
+        );
       }
-    }));
+    );
   }
 
-  $("#watch-form")?.addEventListener("submit", async e => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    message("watch-message", "Salvando...");
-    try {
-      await rpc("add_watch", {
-        p_session_token: sessionToken,
-        p_brand: fd.get("brand").trim(),
-        p_model: fd.get("model").trim(),
-        p_year: fd.get("year") ? Number(fd.get("year")) : null,
-        p_category: fd.get("category"),
-        p_notes: fd.get("notes").trim()
-      });
-      e.currentTarget.reset();
-      message("watch-message", "Relógio adicionado.", true);
-      await loadWatches();
-    } catch (err) {
-      message("watch-message", err.message);
+  // =========================
+  // ADD WATCH
+  // =========================
+
+  $("#watch-form")?.addEventListener(
+    "submit",
+    async (event) => {
+      event.preventDefault();
+
+      // IMPORTANTE:
+      // Guardamos a referência do formulário
+      // antes do await para evitar:
+      // "Cannot read properties of null
+      // (reading 'reset')"
+
+      const form = event.currentTarget;
+
+      const formData = new FormData(form);
+
+      message(
+        "watch-message",
+        "Salvando..."
+      );
+
+      try {
+        await rpc("add_watch", {
+          p_session_token:
+            sessionToken,
+
+          p_brand: formData
+            .get("brand")
+            .trim(),
+
+          p_model: formData
+            .get("model")
+            .trim(),
+
+          p_year: formData.get("year")
+            ? Number(
+                formData.get("year")
+              )
+            : null,
+
+          p_category:
+            formData.get("category"),
+
+          p_notes: formData
+            .get("notes")
+            .trim()
+        });
+
+        // Limpa o formulário usando
+        // a referência salva antes do await.
+        form.reset();
+
+        message(
+          "watch-message",
+          "Relógio adicionado.",
+          true
+        );
+
+        await loadWatches();
+
+      } catch (error) {
+        message(
+          "watch-message",
+          error.message
+        );
+      }
     }
-  });
+  );
+
+  // =========================
+  // ESCAPE HTML
+  // =========================
 
   function escapeHtml(value) {
-    return String(value).replace(/[&<>"']/g, c => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-    }[c]));
+    return String(value).replace(
+      /[&<>"']/g,
+      (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[character]
+    );
   }
 
+  // =========================
+  // START
+  // =========================
+
   loadSession();
+
 })();
