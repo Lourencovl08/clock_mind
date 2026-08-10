@@ -115,3 +115,27 @@ footer p{margin:5px 0;color:#aaa9a4;font-size:11px}
   .principles,.cards,.watch-grid,.watch-form{grid-template-columns:1fr}.watch-form .full{grid-column:auto}.training-item{grid-template-columns:45px 1fr}.training-item>b{display:none}
   footer{display:block}.footer-note{text-align:left;margin-top:20px}
 }
+
+/* Clock Mind — expandable training lessons */
+.training-item.lesson{display:block;padding:0}
+.training-item.lesson summary{display:grid;grid-template-columns:70px 1fr auto;align-items:center;gap:20px;padding:23px 5px;cursor:pointer;list-style:none}
+.training-item.lesson summary::-webkit-details-marker{display:none}
+.training-item.lesson summary>span{font:600 12px var(--sans);color:var(--gold);letter-spacing:.1em}
+.training-item.lesson summary h3{font-family:var(--serif);font-size:22px;margin:0}
+.training-item.lesson summary p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.training-item.lesson summary b{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:600}
+.lesson-plus{width:28px;height:28px;border:1px solid var(--line);display:grid;place-items:center;color:var(--gold);font-size:18px;line-height:1;transition:transform .2s ease}
+.training-item.lesson[open] .lesson-plus{transform:rotate(45deg)}
+.lesson-body{border-top:1px solid var(--line);padding:30px 5px 40px 90px;max-width:1000px}
+.lesson-body h4{font-family:var(--serif);font-size:26px;font-weight:500;margin:0 0 12px}
+.lesson-body h5{color:var(--gold);font-size:10px;text-transform:uppercase;letter-spacing:.16em;margin:28px 0 9px}
+.lesson-body p{max-width:850px;color:var(--ink-soft);font-size:14px;line-height:1.8;margin:0 0 15px}
+.lesson-body ul,.lesson-body ol{max-width:820px;color:var(--ink-soft);font-size:14px;line-height:1.8;padding-left:22px}
+.lesson-body li{margin-bottom:6px}
+.lesson-highlight{max-width:820px;border-left:2px solid var(--gold);background:var(--paper-2);padding:18px 20px;margin:22px 0;color:var(--ink-soft);font-size:14px}
+.lesson-exercise{max-width:820px;margin-top:28px;border:1px solid var(--line);background:var(--white);padding:22px}
+.lesson-exercise h5{margin-top:0}
+.lesson-source{max-width:820px;margin-top:28px;padding-top:18px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.8}
+.lesson-source a{color:var(--gold);text-decoration:underline;text-underline-offset:3px}
+@media(max-width:800px){.training-item.lesson summary{grid-template-columns:45px 1fr 30px;gap:12px}.lesson-body{padding:25px 5px 35px 57px}}
+@media(max-width:540px){.training-item.lesson summary{grid-template-columns:35px 1fr 30px;padding:20px 0}.lesson-body{padding:22px 0 30px}.lesson-body h4{font-size:23px}}
